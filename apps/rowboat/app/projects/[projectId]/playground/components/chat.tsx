@@ -4,9 +4,6 @@ import { getAssistantResponseStreamId } from "@/app/actions/actions";
 import { Messages } from "./messages";
 import z from "zod";
 import { MCPServer, PlaygroundChat } from "@/app/lib/types/types";
-import { AgenticAPIChatMessage, convertFromAgenticAPIChatMessages, convertToAgenticAPIChatMessages } from "@/app/lib/types/agents_api_types";
-import { convertWorkflowToAgenticAPI } from "@/app/lib/types/agents_api_types";
-import { AgenticAPIChatRequest } from "@/app/lib/types/agents_api_types";
 import { Workflow, WorkflowTool } from "@/app/lib/types/workflow_types";
 import { ComposeBoxPlayground } from "@/components/common/compose-box-playground";
 import { Button } from "@heroui/react";
@@ -48,9 +45,6 @@ export function Chat({
 }) {
     const [messages, setMessages] = useState<z.infer<typeof apiV1.ChatMessage>[]>(chat.messages);
     const [loadingAssistantResponse, setLoadingAssistantResponse] = useState<boolean>(false);
-    const [agenticState, setAgenticState] = useState<unknown>(chat.agenticState || {
-        last_agent_name: workflow.startAgent,
-    });
     const [fetchResponseError, setFetchResponseError] = useState<string | null>(null);
     const [billingError, setBillingError] = useState<string | null>(null);
     const [lastAgenticRequest, setLastAgenticRequest] = useState<unknown | null>(null);
@@ -103,9 +97,6 @@ export function Chat({
     // reset state when workflow changes
     useEffect(() => {
         setMessages([]);
-        setAgenticState({
-            last_agent_name: workflow.startAgent,
-        });
     }, [workflow]);
 
     // publish messages to subscriber
@@ -129,36 +120,49 @@ export function Chat({
             setLastAgenticRequest(null);
             setLastAgenticResponse(null);
             
-            const { agents, tools, prompts, startAgent } = convertWorkflowToAgenticAPI(workflow, projectTools);
-            const request: z.infer<typeof AgenticAPIChatRequest> = {
-                projectId,
-                messages: convertToAgenticAPIChatMessages([{
-                    role: 'system',
-                    content: systemMessage || '',
-                    version: 'v1' as const,
-                    chatId: '',
-                    createdAt: new Date().toISOString(),
-                }, ...messages]),
-                state: agenticState,
-                agents,
-                tools,
-                prompts,
-                startAgent,
-                mcpServers: mcpServerUrls.map(server => ({
-                    name: server.name,
-                    serverUrl: server.serverUrl || '',
-                    isReady: server.isReady
-                })),
-                toolWebhookUrl: toolWebhookUrl,
-                testProfile: testProfile ?? undefined,
-            };
+            // const { agents, tools, prompts, startAgent } = convertWorkflowToAgenticAPI(workflow, projectTools);
+            // const request: z.infer<typeof AgenticAPIChatRequest> = {
+            //     projectId,
+            //     messages: convertToAgenticAPIChatMessages([{
+            //         role: 'system',
+            //         content: systemMessage || '',
+            //         version: 'v1' as const,
+            //         chatId: '',
+            //         createdAt: new Date().toISOString(),
+            //     }, ...messages]),
+            //     state: agenticState,
+            //     agents,
+            //     tools,
+            //     prompts,
+            //     startAgent,
+            //     mcpServers: mcpServerUrls.map(server => ({
+            //         name: server.name,
+            //         serverUrl: server.serverUrl || '',
+            //         isReady: server.isReady
+            //     })),
+            //     toolWebhookUrl: toolWebhookUrl,
+            //     testProfile: testProfile ?? undefined,
+            // };
 
-            // Store the full request object
-            setLastAgenticRequest(request);
+            // // Store the full request object
+            // setLastAgenticRequest(request);
 
             let streamId: string | null = null;
             try {
-                const response = await getAssistantResponseStreamId(request);
+                const response = await getAssistantResponseStreamId(
+                    workflow,
+                    projectTools,
+                    [
+                        {
+                            role: 'system',
+                            content: systemMessage || '',
+                            version: 'v1' as const,
+                            chatId: '',
+                            createdAt: new Date().toISOString(),
+                        },
+                        ...messages,
+                    ],
+                );
                 if (ignore) {
                     return;
                 }
@@ -190,8 +194,7 @@ export function Chat({
 
                 try {
                     const data = JSON.parse(event.data);
-                    const msg = AgenticAPIChatMessage.parse(data);
-                    const parsedMsg = convertFromAgenticAPIChatMessages([msg])[0];
+                    const parsedMsg = apiV1.ChatMessage.parse(data);
                     msgs.push(parsedMsg);
                     setOptimisticMessages(prev => [...prev, parsedMsg]);
                 } catch (err) {
@@ -207,7 +210,6 @@ export function Chat({
                 }
 
                 const parsed = JSON.parse(event.data);
-                setAgenticState(parsed.state);
 
                 // Combine state and collected messages in the response
                 setLastAgenticResponse({
@@ -267,7 +269,6 @@ export function Chat({
     }, [
         messages,
         projectId,
-        agenticState,
         workflow,
         systemMessage,
         mcpServerUrls,

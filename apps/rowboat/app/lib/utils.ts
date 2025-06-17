@@ -4,6 +4,8 @@ import { generateObject } from "ai";
 import { ApiMessage } from "./types/types";
 import { openai } from "@ai-sdk/openai";
 import { redisClient } from "./redis";
+import { apiV1 } from "rowboat-shared";
+import { Workflow, WorkflowTool } from "./types/workflow_types";
 
 export async function getAgenticApiResponse(
     request: z.infer<typeof AgenticAPIChatRequest>,
@@ -37,18 +39,22 @@ export async function getAgenticApiResponse(
 }
 
 export async function getAgenticResponseStreamId(
-    request: z.infer<typeof AgenticAPIChatRequest>,
+    workflow: z.infer<typeof Workflow>,
+    projectTools: z.infer<typeof WorkflowTool>[],
+    messages: z.infer<typeof apiV1.ChatMessage>[],
 ): Promise<z.infer<typeof AgenticAPIInitStreamResponse>> {
     // serialize the request
-    const payload = JSON.stringify(request);
+    const payload = JSON.stringify({
+        workflow,
+        projectTools,
+        messages,
+    });
 
     // create a uuid for the stream
     const streamId = crypto.randomUUID();
 
     // store payload in redis
-    await redisClient.set(`chat-stream-${streamId}`, payload, {
-        EX: 60 * 10, // expire in 10 minutes
-    });
+    await redisClient.set(`chat-stream-${streamId}`, payload, 'EX', 60 * 10); // expire in 10 minutes
 
     return {
         streamId,

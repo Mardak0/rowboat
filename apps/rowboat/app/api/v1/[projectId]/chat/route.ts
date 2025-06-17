@@ -112,7 +112,7 @@ export async function POST(
             }
         }
 
-        let currentState: unknown = reqState ?? { last_agent_name: workflow.agents[0].name };
+        let currentState: unknown = reqState ?? { lastAgentName: workflow.agents[0].name };
 
         // get assistant response
         const { agents, tools, prompts, startAgent } = convertWorkflowToAgenticAPI(workflow, projectTools);
