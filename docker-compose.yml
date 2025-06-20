@@ -13,14 +13,13 @@ services:
     build:
       context: ./apps/rowboat
       dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
+    # REMOVED: ports: - "3000:3000"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - MONGODB_CONNECTION_STRING=mongodb://mongo:27017/rowboat
       - USE_AUTH=${USE_AUTH}
       - AUTH0_SECRET=test_secret
-      - AUTH0_BASE_URL=http://localhost:3000
+      - AUTH0_BASE_URL=http://localhost:3000  # <<< IMPORTANT: Ensure your app listens on 0.0.0.0, not localhost, if this is for internal binding. If for external callback, it should be your actual public domain.
       - AUTH0_ISSUER_BASE_URL=https://test.com
       - AUTH0_CLIENT_ID=test
       - AUTH0_CLIENT_SECRET=test
@@ -41,7 +40,7 @@ services:
       - USE_RAG_SCRAPING=${USE_RAG_SCRAPING}
       - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY}
       - USE_CHAT_WIDGET=${USE_CHAT_WIDGET}
-      - CHAT_WIDGET_HOST=http://localhost:3006
+      - CHAT_WIDGET_HOST=http://localhost:3006 # <<< IMPORTANT: Ensure your app listens on 0.0.0.0, not localhost, if this is for internal binding. If for external callback, it should be your actual public domain.
       - CHAT_WIDGET_SESSION_JWT_SECRET=${CHAT_WIDGET_SESSION_JWT_SECRET}
       - MAX_QUERIES_PER_MINUTE=${MAX_QUERIES_PER_MINUTE}
       - MAX_PROJECTS_PER_USER=${MAX_PROJECTS_PER_USER}
@@ -62,8 +61,7 @@ services:
     build:
       context: ./apps/rowboat_agents
       dockerfile: Dockerfile
-    ports:
-      - "3001:3001"
+    # REMOVED: ports: - "3001:3001"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - API_KEY=${AGENTS_API_KEY}
@@ -82,8 +80,7 @@ services:
     build:
       context: ./apps/copilot
       dockerfile: Dockerfile
-    ports:
-      - "3002:3002"
+    # REMOVED: ports: - "3002:3002"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - API_KEY=${COPILOT_API_KEY}
@@ -97,8 +94,7 @@ services:
   #   build:
   #     context: ./apps/experimental/tools_webhook
   #     dockerfile: Dockerfile
-  #   ports:
-  #     - "3005:3005"
+  #   # REMOVED: ports: - "3005:3005"
   #   environment:
   #     - SIGNING_SECRET=${SIGNING_SECRET}
   #   restart: unless-stopped
@@ -151,7 +147,7 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - EMBEDDING_PROVIDER_BASE_URL=${EMBEDDING_PROVIDER_BASE_URL}
-      - EMBEDDING_PROVIDER_API_KEY=${EMBEDDING_PROVIDER_API_KEY}
+      - EMBEDDING_PROVIDER_API_KEY=${EMBEDDING_API_KEY}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL}
       - MONGODB_CONNECTION_STRING=mongodb://mongo:27017/rowboat
       - REDIS_URL=redis://redis:6379
@@ -217,18 +213,16 @@ services:
   #     context: ./apps/experimental/chat_widget
   #     dockerfile: Dockerfile
   #   profiles: [ "chat_widget" ]
-  #   ports:
-  #     - "3006:3006"
+  #   # REMOVED: ports: - "3006:3006"
   #   environment:
   #     - PORT=3006
-  #     - CHAT_WIDGET_HOST=http://localhost:3006
-  #     - ROWBOAT_HOST=http://localhost:3000
+  #     - CHAT_WIDGET_HOST=http://localhost:3006 # <<< IMPORTANT: Ensure your app listens on 0.0.0.0, not localhost, if this is for internal binding. If for external callback, it should be your actual public domain.
+  #     - ROWBOAT_HOST=http://localhost:3000 # <<< IMPORTANT: This should be http://rowboat:<port> not localhost
   #   restart: unless-stopped
 
   mongo:
     image: mongo:latest
-    ports:
-      - "27017:27017"
+    # REMOVED: ports: - "27017:27017"
     restart: unless-stopped
     attach: false
     volumes:
@@ -236,8 +230,7 @@ services:
 
   redis:
     image: redis:latest
-    ports:
-      - "6379:6379"
+    # REMOVED: ports: - "6379:6379"
     restart: unless-stopped
 
   docs:
@@ -245,15 +238,13 @@ services:
       context: ./apps/docs
       dockerfile: Dockerfile
     profiles: [ "docs" ]
-    ports:
-      - "8000:8000"
+    # REMOVED: ports: - "8000:8000"
 
   # twilio_handler:
   #   build:
   #     context: ./apps/experimental/twilio_handler
   #     dockerfile: Dockerfile
-  #   ports:
-  #     - "4010:4010"
+  #   # REMOVED: ports: - "4010:4010"
   #   environment:
   #     - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
   #     - ROWBOAT_API_HOST=http://rowboat:3000
@@ -264,8 +255,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.qdrant
-    ports:
-      - "6333:6333"
+    # REMOVED: ports: - "6333:6333"
     environment:
       - QDRANT__STORAGE__STORAGE_PATH=/data/qdrant
     restart: unless-stopped
@@ -273,7 +263,7 @@ services:
     volumes:
       - ./data/qdrant:/data/qdrant
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"] # <<< IMPORTANT: For internal healthchecks, use localhost, but if Coolify is checking from outside the container, it needs to be 0.0.0.0 or the container's IP. Usually this is fine.
       interval: 5s
       timeout: 10s
       retries: 3
